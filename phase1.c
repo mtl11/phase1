@@ -1,9 +1,30 @@
 #include <phase1.h>
+#include <usloss.h>
+#include <stdio.h>
 
-void phase1_init(void){
+//typedef struct ProcTableEntry ProcTableEntry;
+
+struct ProcTableEntry {
+	int pid;
+	int priority;
+	struct ProcTableEntry* parent;
+	struct ProcTableEntry* firstChild;
+	struct ProcTableEntry* nextChild;
+	char *procName;
+};
+
+struct ProcTableEntry procTable[MAXPROC];
+
+void dispatcher(){
 
 }
+
+void phase1_init(void){
+	//TODO: populate proc table with init
+	dispatcher();
+}
 int   fork1(char *name, int(*func)(char *), char *arg, int stacksize, int priority){
+	
 	return 0;
 }
 
