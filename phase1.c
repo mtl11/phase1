@@ -81,19 +81,40 @@ int   join(int *status){
 }
 void  quit(int status){
 }
+
  int   zap(int pid){
-	return 0;
+	if (currentProc->pid == pid) {
+		USLOSS_Console("Process %d tried to zap itself. Halting...\n", currentProc->pid);
+		USLOSS_Halt(1);
+	}
+	if (procTable[pid % MAXPROC].status == -1) {
+		USLOSS_Console("Process %d tried to zap a non existing process. Halting...\n", currentProc->pid);
+		USLOSS_Halt(1);
+	}
+	if (pid == 1) {
+		USLOSS_Console("Process %d tried to zap init. Halting...\n", currentProc->pid);
+		USLOSS_Halt(1);
+	}
+
+	//need to implementlinear hashing still
+	ProcTableEntry* zappedProc = &procTable[pid % MAXPROC];
+
+	
 }
+
  int   isZapped(void){
-return 0;
+	return currentProc->zapped;
 } 
+
 int   getpid(void){
-return 0;
+	return currentProc->pid;
 }
+
  void  dumpProcesses(void){
 }
  int   blockMe(int block_status){
-return 0;
+	currentProc->blockStatus = block_status;
+	return block_status;
 }
  int   unblockProc(int pid){
 return 0;
@@ -112,5 +133,4 @@ void  startProcesses(void){
 	phase1_init();
 	//calls init();	
 	procTable[1].func();	
-}   
-
+}  
