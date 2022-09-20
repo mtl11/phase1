@@ -18,31 +18,69 @@ struct ProcTableEntry {
 };
 
 char lastProc[50];
+int currPid;
 
 struct ProcTableEntry procTable[MAXPROC];
 
 void dispatcher(){
 
 }
+struct ProcTableEntry currProc;
+
+void sentinelProc(){
+        while (1) {
+                if (phase2_check_io() == 0){
+                //      report deadlock and terminate simulation
+                }
+                USLOSS_WaitInt();
+}
+}
 
 void initProc(){
         //init process
-        //TODO: create sentinel proc
-        //TODO: create testcase_main proc
+        //creates sentinel proc
+	struct ProcTableEntry sentinel;
+	currPid = currPid+1;
+	sentinel.pid = currPid;
+        sentinel.priority = 7;
+        sentinel.parent = NULL;
+        sentinel.firstChild = NULL;
+        sentinel.nextChild = NULL;
+        strcpy( sentinel.procName, "sentinel");
+	sentinel.func = sentinelProc;
+	int slot = 2 % MAXPROC;
+        procTable[slot] = sentinel;      
+//	currProc = sentinel;
+	
+	//create testcase_main proc
+	struct ProcTableEntry testcaseMain;
+        currPid = currPid+1;
+        testcaseMain.pid = currPid;
+        testcaseMain.priority = 5;
+        testcaseMain.parent = NULL;
+        testcaseMain.firstChild = NULL;
+        testcaseMain.nextChild = NULL;
+        strcpy( testcaseMain.procName, "testcaseMain");
+        testcaseMain.func = testcase_main;
+        slot = 3 % MAXPROC;
+        procTable[slot] = testcaseMain;;
+//        currProc = testcaseMain;
 	phase2_start_service_processes();
 	phase3_start_service_processes();
 	phase4_start_service_processes();
 	phase5_start_service_processes();
 	testcase_main();
+	
         while (1){
                 join(0);
         }
 }
 
 void phase1_init(void){
-	//TODO: populate proc table with init
+	//populates procTable with init	
 	struct ProcTableEntry init;
-	init.pid = 1;
+	currPid = 1;
+	init.pid = currPid;
 	init.priority = 6;
 	init.parent = NULL;
 	init.firstChild = NULL;
@@ -51,22 +89,26 @@ void phase1_init(void){
 	init.func = initProc;
 	int slot = 1 % MAXPROC;
 	procTable[slot] = init;	
+	currProc = init;
 	dispatcher();
 }
 
 int   fork1(char *name, int(*func)(char *), char *arg, int stacksize, int priority){
-	// create way to get new pids
-	int pid = 4;
+	currPid = currPid+1;
+	int pid = currPid;
 	int slot = pid % MAXPROC;
 	if (stacksize < USLOSS_MIN_STACK){
 		return -2;
 	}
-	
-	//TODO: add entry into proc table
+	//adds entry into proc table
 	struct ProcTableEntry newEntry;
-	procTable[slot] = newEntry;
 	newEntry.pid = pid;
-	newEntry.priority = priority;		
+	newEntry.priority = priority;
+	newEntry.parent = NULL;
+        newEntry.firstChild = NULL;
+        newEntry.nextChild = NULL;		
+	//newEntry.func = func;
+	procTable[slot] = newEntry;
 	func(arg);
 	mmu_init_proc(pid);
 	dispatcher(); 
@@ -111,6 +153,7 @@ return 0;
 void  startProcesses(void){
 	phase1_init();
 	//calls init();	
-	procTable[1].func();	
+	currProc.func();
+//	procTable[1].func();	
 }   
 
