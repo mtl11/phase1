@@ -155,7 +155,7 @@ int   getpid(void){
 }
  int   blockMe(int block_status){
 	 
-	if (block_status < 10) {
+	if (block_status <= 10) {
         	USLOSS_Console("The new block status must be greater than or equal to 10.\n");
         	USLOSS_Halt(1);
     	}
