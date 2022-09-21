@@ -4,14 +4,18 @@
 #include <string.h>
 
 //typedef struct ProcTableEntry ProcTableEntry;
+
+
 typedef void (*Process)();
 
 struct ProcTableEntry {
 	int pid;
 	int priority;
+	int status;
 	struct ProcTableEntry* parent;
 	struct ProcTableEntry* firstChild;
 	struct ProcTableEntry* nextChild;
+	struct ProcTableEntry zapList[MAXPROC];
 	char procName[50];
 	USLOSS_Context context;
 	Process func;
@@ -41,6 +45,22 @@ void initProc(){
 
 void phase1_init(void){
 	//TODO: populate proc table with init
+	int i;
+	for (i = 0; i < MAXPROC; i++) {
+		procTable[i].pid = -1;
+		procTable[i].priority = -1;
+		procTable[i].status = -1;
+		procTable[i].parent = NULL;
+		procTable[i].firstChild = NULL;
+		procTable[i].nextChild = NULL;
+		strcpy(procTable[i].procName, "");
+		
+		int j;
+        	for (j = 0; j < MAXPROC; j++) {
+           		procTable[i].zapList[j] = NULL;
+        	}
+	}	
+	
 	struct ProcTableEntry init;
 	init.pid = 1;
 	init.priority = 6;
@@ -51,6 +71,7 @@ void phase1_init(void){
 	init.func = initProc;
 	int slot = 1 % MAXPROC;
 	procTable[slot] = init;	
+	
 	dispatcher();
 }
 
@@ -98,8 +119,25 @@ void  quit(int status){
 
 	//need to implementlinear hashing still
 	ProcTableEntry* zappedProc = &procTable[pid % MAXPROC];
-
+	 
+	zappedProc->zapped = 1;
+	 
+	int i = 0;
+	while (zappedProc->zapList[i] != NULL) {
+		i++;
+	}
+	zappedProc->zapList[i] = currProc;
 	
+	//Block due to zap
+	currProc->status = 2;
+	 
+	dispatcher();
+	 
+	if (currProc->zapped == 1) {
+		return -1;
+	}
+	
+	return 0;
 }
 
  int   isZapped(void){
@@ -113,9 +151,22 @@ int   getpid(void){
  void  dumpProcesses(void){
 }
  int   blockMe(int block_status){
+	 
+	if (block_status < 10) {
+        	USLOSS_Console("The new status must be greater than or equal to 10.\n");
+        	USLOSS_Halt(1);
+    	}
+	
 	currentProc->blockStatus = block_status;
-	return block_status;
+	dispatcher();
+	 
+	if (currProc->zapped) {
+        	return -1;
+    	}
+
+    	return 0;
 }
+
  int   unblockProc(int pid){
 return 0;
 }
