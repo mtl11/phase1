@@ -10,8 +10,10 @@ typedef void (*Process)();
 
 struct ProcTableEntry {
 	int pid;
+	int ppid;
 	int priority;
 	int status;
+	int startTime;
 	struct ProcTableEntry* parent;
 	struct ProcTableEntry* firstChild;
 	struct ProcTableEntry* nextChild;
@@ -47,6 +49,7 @@ void phase1_init(void){
 	//TODO: populate proc table with init
 	int i;
 	for (i = 0; i < MAXPROC; i++) {
+		procTable[i].pid = -1;
 		procTable[i].pid = -1;
 		procTable[i].priority = -1;
 		procTable[i].status = -1;
@@ -105,15 +108,15 @@ void  quit(int status){
 
  int   zap(int pid){
 	if (currentProc->pid == pid) {
-		USLOSS_Console("Process %d tried to zap itself. Halting...\n", currentProc->pid);
+		USLOSS_Console("Error: Process %d tried to zap itself. Halting...\n", currentProc->pid);
 		USLOSS_Halt(1);
 	}
 	if (procTable[pid % MAXPROC].status == -1) {
-		USLOSS_Console("Process %d tried to zap a non existing process. Halting...\n", currentProc->pid);
+		USLOSS_Console("Error: Process %d tried to zap a non existing process. Halting...\n", currentProc->pid);
 		USLOSS_Halt(1);
 	}
 	if (pid == 1) {
-		USLOSS_Console("Process %d tried to zap init. Halting...\n", currentProc->pid);
+		USLOSS_Console("Error: Process %d tried to zap init. Halting...\n", currentProc->pid);
 		USLOSS_Halt(1);
 	}
 
@@ -153,7 +156,7 @@ int   getpid(void){
  int   blockMe(int block_status){
 	 
 	if (block_status < 10) {
-        	USLOSS_Console("The new status must be greater than or equal to 10.\n");
+        	USLOSS_Console("The new block status must be greater than or equal to 10.\n");
         	USLOSS_Halt(1);
     	}
 	
@@ -167,12 +170,21 @@ int   getpid(void){
     	return 0;
 }
 
- int   unblockProc(int pid){
-return 0;
+int   unblockProc(int pid){
+	ProcTableEntry* proc = &procTable[pid % MAXPROC];
+	
+	if (proc->pid == pid || (proc->status <= 10 && proc->status != 0)) {
+		return -2;
+	}
+	proc->status = 0;
+	dispatcher();
+	return 0;
 }
- int   readCurStartTime(void){
-return 0;
+
+int   readCurStartTime(void){
+	return currProc->startTime;
 }
+
  void  timeSlice(void){
 }
  int   readtime(void){
