@@ -78,32 +78,76 @@ void phase1_init(void){
 	dispatcher();
 }
 
+void phase1_init(void){
+	//populates procTable with init	
+	struct ProcTableEntry init;
+	currPid = 1;
+	init.pid = currPid;
+	init.priority = 6;
+	init.parent = NULL;
+	init.firstChild = NULL;
+	init.nextChild = NULL;
+	strcpy( init.procName, "init");
+	int slot = 1 % MAXPROC;
+	procTable[slot] = init;	
+	currProc = &init;
+	dispatcher();
+}
+
 int   fork1(char *name, int(*func)(char *), char *arg, int stacksize, int priority){
-	// create way to get new pids
-	int pid = 4;
+	currPid = currPid+1;
+	int pid = currPid;
 	int slot = pid % MAXPROC;
 	if (stacksize < USLOSS_MIN_STACK){
 		return -2;
 	}
-	
-	//TODO: add entry into proc table
-	struct ProcTableEntry newEntry;
-	procTable[slot] = newEntry;
+	//adds entry into proc table
+	struct ProcTableEntry  newEntry;
 	newEntry.pid = pid;
-	newEntry.priority = priority;		
+	newEntry.priority = priority;
+	newEntry.parent = currProc;
+        newEntry.firstChild = NULL;
+        newEntry.nextChild = NULL;
+	strcpy( newEntry.procName, name);
+	
+	if (currProc->firstChild == NULL) {
+		currProc->firstChild = &newEntry;
+	}
+	else {
+		struct ProcTableEntry* childProc;
+		childProc = currProc->firstChild;
+		while (childProc->nextChild != NULL) {
+			childProc = child->nextChild;
+		}
+		childProc->nextChild = &newEntry;
+	}
+	
+	procTable[slot] = newEntry;	
+	currProc = (struct ProcTableEntry *) malloc(sizeof(struct ProcTableEntry));
+	currProc = &newEntry;
+
 	func(arg);
+	procTable[slot].status = 2;
 	mmu_init_proc(pid);
 	dispatcher(); 
 	return pid;
 }
 
 int   join(int *status){
-	//hardcase of value, needs to be status of dead child
-	//int value = 3;
-	//returns pid of child that finished, for now its just 4 to pass first testcase
-	return 4;
+	if (status != NULL){
+		*status = currProc->status;
+	}else{
+		status = (int *) malloc(sizeof(int));
+		*status = currProc->status;	
+		USLOSS_Console("%s\n", currProc->procName);
+	}
+	
+	dispatcher();
+	return currProc->pid;
 }
-void  quit(int status){
+void  quit(int status){	
+//	USLOSS_Console("%s\n", currProc->procName);
+	currProc->status = status;
 }
 
  int   zap(int pid){
