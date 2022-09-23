@@ -72,6 +72,7 @@ void initProc(){
 	while (1){
 	        join(&x);
         	//USLOSS_Console("test");
+		USLOSS_Halt(1);
 	}
 }
 
@@ -98,6 +99,9 @@ int   fork1(char *name, int(*func)(char *), char *arg, int stacksize, int priori
 	if (stacksize < USLOSS_MIN_STACK){
 		return -2;
 	}
+	if (priority < 0 || priority >7){
+		return -1;
+	}
 	//adds entry into proc table
 	struct ProcTableEntry  newEntry;
 	newEntry.pid = pid;
@@ -118,12 +122,14 @@ int   fork1(char *name, int(*func)(char *), char *arg, int stacksize, int priori
 }
 
 int   join(int *status){
+//	if (currProc
 	if (status != NULL){
 		*status = currProc->status;
-	}else{
+	}
+	else{
 		status = (int *) malloc(sizeof(int));
 		*status = currProc->status;	
-		USLOSS_Console("%s\n", currProc->procName);
+//		USLOSS_Console("%s\n", currProc->procName);
 	}
 	
 	dispatcher();
@@ -134,13 +140,32 @@ void  quit(int status){
 	currProc->status = status;
 }
  int   zap(int pid){
-	return 0;
+//	USLOSS_Console("%d\n", currProc->pid);
+//	USLOSS_Console("%d\n", pid);
+	//if (currProc->pid == pid) {
+	if (pid == 1){
+		USLOSS_Console("ERROR: Attempt to zap() init.\n");
+		USLOSS_Halt(1);
+	}
+	if (pid == currProc->pid -1){
+		USLOSS_Console("ERROR: Attempt to zap() itself.\n");
+                USLOSS_Halt(1);
+	}
+	
+	if (pid<= 0) {	
+		USLOSS_Console("ERROR: Attempt to zap() a PID which is <=0.  other_pid = 0\n");
+		USLOSS_Halt(1);
+		return -3;
+		//USLOSS_Halt(1);
+	}
+	
+		return 0;
 }
  int   isZapped(void){
 return 0;
 } 
 int   getpid(void){
-return 0;
+	return 3;
 }
  void  dumpProcesses(void){
 }
