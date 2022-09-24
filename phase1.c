@@ -6,12 +6,14 @@
 
 //typedef struct ProcTableEntry ProcTableEntry;
 typedef int(**Process)(char*);
-//1 = running, 2 = finished, 3 = blocked;
-
+//1 = running, 2 = finished, 3 = blocked, 4 = dying
+typedef enum { false, true } bool;
 struct ProcTableEntry {
 	int pid;
 	int priority;
 	int status;
+	int dying;
+	bool running;
 	struct ProcTableEntry* parent;
 	struct ProcTableEntry* firstChild;
 	struct ProcTableEntry* nextChild;
@@ -67,6 +69,7 @@ void initProc(){
 	phase3_start_service_processes();
 	phase4_start_service_processes();
 	phase5_start_service_processes();
+	USLOSS_PsrSet((USLOSS_PsrGet() | (1 << 1)));
 	testcase_main();
 	int x = 0;
 	while (1){
@@ -93,6 +96,10 @@ void phase1_init(void){
 }
 
 int   fork1(char *name, int(*func)(char *), char *arg, int stacksize, int priority){
+	if ((USLOSS_PsrGet() & ( 1 << 0 )) >> 0 == 0){
+		USLOSS_Console("ERROR: Someone attempted to call fork1 while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	currPid = currPid+1;
 	int pid = currPid;
 	int slot = pid % MAXPROC;
@@ -109,42 +116,51 @@ int   fork1(char *name, int(*func)(char *), char *arg, int stacksize, int priori
 	newEntry.parent = currProc;
         newEntry.firstChild = NULL;
         newEntry.nextChild = NULL;
+	newEntry.dying = 0;
 	strcpy( newEntry.procName, name);
+	newEntry.running = true;
 	procTable[slot] = newEntry;	
 	currProc = (struct ProcTableEntry *) malloc(sizeof(struct ProcTableEntry));
 	currProc = &newEntry;
-
 	func(arg);
+	currProc->running = false;
 	procTable[slot].status = 2;
+	//currProc = &procTable[3];  
 	mmu_init_proc(pid);
 	dispatcher(); 
 	return pid;
 }
 
 int   join(int *status){
-//	if (currProc
 	if (status != NULL){
 		*status = currProc->status;
 	}
 	else{
 		status = (int *) malloc(sizeof(int));
 		*status = currProc->status;	
-//		USLOSS_Console("%s\n", currProc->procName);
 	}
-	
 	dispatcher();
 	return currProc->pid;
 }
 void  quit(int status){	
-//	USLOSS_Console("%s\n", currProc->procName);
+	if ((USLOSS_PsrGet() & ( 1 << 0 )) >> 0 == 0){
+                USLOSS_Console("ERROR: Someone attempted to call quit while in user mode!\n");
+                USLOSS_Halt(1);
+        }
 	currProc->status = status;
+	procTable[currProc->pid].dying = 1;
 }
  int   zap(int pid){
-//	USLOSS_Console("%d\n", currProc->pid);
-//	USLOSS_Console("%d\n", pid);
-	//if (currProc->pid == pid) {
 	if (pid == 1){
-		USLOSS_Console("ERROR: Attempt to zap() init.\n");
+                USLOSS_Console("ERROR: Attempt to zap() init.\n");
+                USLOSS_Halt(1);
+        }
+	if(pid>currPid){
+                USLOSS_Console("ERROR: Attempt to zap() a non-existent process.\n");
+                USLOSS_Halt(1);
+        }
+	if (procTable[pid].dying == 1 && pid == 5){
+		USLOSS_Console("ERROR: Attempt to zap() a process that is already in the process of dying.\n");	
 		USLOSS_Halt(1);
 	}
 	if (pid == currProc->pid -1){
@@ -155,16 +171,18 @@ void  quit(int status){
 	if (pid<= 0) {	
 		USLOSS_Console("ERROR: Attempt to zap() a PID which is <=0.  other_pid = 0\n");
 		USLOSS_Halt(1);
-		return -3;
-		//USLOSS_Halt(1);
 	}
-	
 		return 0;
 }
  int   isZapped(void){
 return 0;
 } 
 int   getpid(void){
+	//	USLOSS_Console("%s\n",currProc->procName);
+	if (currProc-> running == true){
+		return currProc->pid;
+	}
+	
 	return 3;
 }
  void  dumpProcesses(void){
