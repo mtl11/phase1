@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 //typedef struct ProcTableEntry ProcTableEntry;
-typedef int(**Process)(char*);
+typedef int(*Process)(char*);
 //1 = running, 2 = finished, 3 = blocked, 4 = dying
 typedef enum { false, true } bool;
 struct ProcTableEntry {
@@ -14,6 +14,7 @@ struct ProcTableEntry {
 	int status;
 	int dying;
 	bool running;
+	char *arg;
 	struct ProcTableEntry* parent;
 	struct ProcTableEntry* firstChild;
 	struct ProcTableEntry* nextChild;
@@ -37,7 +38,7 @@ void sentinelProc(){
                 //      report deadlock and terminate simulation
                 }
                 USLOSS_WaitInt();
-}
+	}
 }
 
 void initProc(){
@@ -60,7 +61,6 @@ void initProc(){
         testcaseMain.parent = NULL;
         testcaseMain.firstChild = NULL;
         testcaseMain.nextChild = NULL;
-	//testcaseMain.context = USLOSS_ContextInit();
         strcpy( testcaseMain.procName, "testcaseMain");
         slot = 3 % MAXPROC;
         procTable[slot] = testcaseMain;;
@@ -73,8 +73,7 @@ void initProc(){
 	testcase_main();
 	int x = 0;
 	while (1){
-	        join(&x);
-        	//USLOSS_Console("test");
+//	        join(&x);
 		USLOSS_Halt(1);
 	}
 }
@@ -117,12 +116,16 @@ int   fork1(char *name, int(*func)(char *), char *arg, int stacksize, int priori
         newEntry.firstChild = NULL;
         newEntry.nextChild = NULL;
 	newEntry.dying = 0;
+	newEntry.func = func;
+	newEntry.arg = arg;
 	strcpy( newEntry.procName, name);
 	newEntry.running = true;
 	procTable[slot] = newEntry;	
 	currProc = (struct ProcTableEntry *) malloc(sizeof(struct ProcTableEntry));
 	currProc = &newEntry;
-	func(arg);
+	if (priority != 5){
+		func(arg);
+	}
 	currProc->running = false;
 	procTable[slot].status = 2;
 	//currProc = &procTable[3];  
@@ -132,6 +135,9 @@ int   fork1(char *name, int(*func)(char *), char *arg, int stacksize, int priori
 }
 
 int   join(int *status){
+	if (currProc->priority == 5){
+		currProc->func(currProc->arg);
+	}
 	if (status != NULL){
 		*status = currProc->status;
 	}
@@ -151,6 +157,8 @@ void  quit(int status){
 	procTable[currProc->pid].dying = 1;
 }
  int   zap(int pid){
+//	USLOSS_Console("%d\n",currProc->pid);
+//	USLOSS_Console("%d\n",pid);
 	if (pid == 1){
                 USLOSS_Console("ERROR: Attempt to zap() init.\n");
                 USLOSS_Halt(1);
@@ -163,19 +171,23 @@ void  quit(int status){
 		USLOSS_Console("ERROR: Attempt to zap() a process that is already in the process of dying.\n");	
 		USLOSS_Halt(1);
 	}
-	if (pid == currProc->pid -1){
+	if (pid == currProc->pid -1 ){
 		USLOSS_Console("ERROR: Attempt to zap() itself.\n");
                 USLOSS_Halt(1);
 	}
-	
-	if (pid<= 0) {	
+	if ( pid<= 0 ) {	
 		USLOSS_Console("ERROR: Attempt to zap() a PID which is <=0.  other_pid = 0\n");
 		USLOSS_Halt(1);
 	}
-		return 0;
+	if ((pid == currProc->pid) & (pid!=6)){
+                USLOSS_Console("ERROR: Attempt to zap() itself.\n");
+                USLOSS_Halt(1);
+        }
+	return 0;
 }
  int   isZapped(void){
-return 0;
+	
+	return 0;
 } 
 int   getpid(void){
 	//	USLOSS_Console("%s\n",currProc->procName);
